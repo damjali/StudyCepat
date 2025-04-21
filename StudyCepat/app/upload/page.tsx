@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from 'sonner'
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -16,6 +17,7 @@ export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -54,7 +56,7 @@ export default function UploadPage() {
     setArticle(e.target.value)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!file && !article.trim()) {
@@ -64,17 +66,50 @@ export default function UploadPage() {
 
     // Simulate processing
     setIsProcessing(true)
+    if (file){
+      try {
+        setIsUploading(true)
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          router.push("/flashcards")
-          return 100
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("http://127.0.0.1:8000/summarize", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Upload failed:", errorData);
+          toast.error(`Upload failed: There was an error uploading your document: ${response.statusText}`);
+          return;
         }
-        return prev + 10
-      })
-    }, 300)
+
+        const data = await response.json();
+        console.log("Success:", data);
+        //toast.success("Document uploaded successfully: Your document has been sent for summarization.");
+        const message = data.message || JSON.stringify(data);
+        const dataString = JSON.stringify(data);
+        router.push(`/flashcards/123?data=${dataString}`);
+        
+        // Assuming the backend returns an ID or some identifier
+        // that you want to use for navigation. Adjust accordingly.
+        // if (data && data.documentId) {
+        //   router.push(`/summary/${data.documentId}`);
+        // } else {
+        //   // Optionally handle cases where no ID is returned
+        //   console.warn("No document ID received from the backend.");
+        // }
+
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error("Upload failed: There was an error uploading your document");
+      } finally {
+        setIsUploading(false)
+      }
+    }
+    setIsProcessing(false);
+
   }
 
   return (

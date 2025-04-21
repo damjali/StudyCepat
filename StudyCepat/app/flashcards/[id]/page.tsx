@@ -29,10 +29,29 @@ const sampleFlashcards = [
   },
 ]
 
+import { useRouter, useSearchParams } from "next/navigation"
+
 export default function FlashcardsPage() {
+  const [flashcards, setFlashcards] = useState<any[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
-  const totalCards = sampleFlashcards.length
+  let totalCards = 1
+  const router = useRouter()
+
+  useEffect(() => {
+    const searchParams = useSearchParams();
+    const dataString = searchParams.get('data');
+
+    if (dataString) {
+      try {
+        const parsedData = JSON.parse(dataString);
+        setFlashcards([parsedData]);
+        totalCards = flashcards.length
+      } catch (error) {
+        console.error("Error parsing flashcard data:", error);
+      }
+    }
+  }, [useSearchParams]);
 
   // Add keyboard navigation
   useEffect(() => {
@@ -77,8 +96,6 @@ export default function FlashcardsPage() {
       <div className="flashcard-container">
         <div className="flashcard-wrapper">
           <div className={`flashcard ${isFlipped ? "flipped" : ""}`} onClick={toggleFlip}>
-            <div className="flashcard-front">{sampleFlashcards[currentIndex].question}</div>
-            <div className="flashcard-back">{sampleFlashcards[currentIndex].answer}</div>
           </div>
         </div>
 
@@ -110,14 +127,5 @@ export default function FlashcardsPage() {
           </Button>
         </div>
       </div>
-
-      <div className="mt-12">
-        <Button asChild className="px-8 py-6">
-          <Link href="/upload">Create more flashcards</Link>
-        </Button>
-      </div>
-
-      <p className="text-sm text-gray-500 mt-12">Made with love by Team Paling Seronok</p>
     </div>
-  )
-}
+  )}
