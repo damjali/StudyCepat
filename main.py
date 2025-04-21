@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Response
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
+import json
 from pydantic import BaseModel
 from typing import Optional
 import PyPDF2
@@ -27,24 +28,55 @@ app.add_middleware(
 class Article(BaseModel):
     article: Optional[str] = None
 
-@app.post("/summarize")
-async def summarize(file: UploadFile = File(None), article: Article = Article()):
-    if file: 
-        if file.content_type != 'application/pdf':
-            raise HTTPException(status_code=400, detail="Invalid file type")
+@app.get("/")
+def read_root():
+    return {"message": "The Server is Running!"}
 
-        try:
-            contents = await file.read()
-            pdf_file = PyPDF2.PdfReader(io.BytesIO(contents))
+
+@app.post("/summarize")
+async def summarize(request: Request, file: UploadFile = File(None)):
+    text = None
+    try:
+        body = await request.body()
+        if file:
+            if file.content_type != 'application/pdf':
+                raise HTTPException(status_code=400, detail="Invalid file type")
+
+            if not body:
+                raise HTTPException(status_code=400, detail="Empty PDF file")
+
+            pdf_file = PyPDF2.PdfReader(io.BytesIO(body))
             text = ""
             for page in pdf_file.pages:
-                text += page.extract_text()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error reading PDF: {e}")
-    elif article.article:
-        text = article.article
-    else:
+                try:
+                    text += page.extract_text()
+                except Exception as e:
+                    print(f"Error extracting text from page: {e}")
+                    continue  # Skip to the next page if there's an error
+
+        else:
+            try:
+                data = json.loads(body.decode())
+                article = data.get("article")
+                if article:
+                    text = article
+                else:
+                    raise HTTPException(
+                        status_code=400, detail="No article or file provided"
+                    )
+            except (json.JSONDecodeError, AttributeError) as e:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid JSON data: {e}"
+                )
+
+    except PyPDF2.errors.PdfReadError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid PDF file: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {e}")
+
+    if not text:
         raise HTTPException(status_code=400, detail="No article or file provided")
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
@@ -58,3 +90,9 @@ async def summarize(file: UploadFile = File(None), article: Article = Article())
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
+
+#to check if the server are able to receive data and return it back
+@app.post("/echo")
+async def echo_data(request: Request):
+    data = await request.json()
+    return data
