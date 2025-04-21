@@ -1,0 +1,1 @@
+prompt = "Summarize the following article: {article}"
