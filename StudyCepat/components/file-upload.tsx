@@ -48,8 +48,11 @@ export function FileUpload() {
 
       const data = await response.json();
       console.log("Success:", data);
-      toast.success("Document uploaded successfully: Your document has been sent for summarization.");
+      //toast.success("Document uploaded successfully: Your document has been sent for summarization.");
 
+      const message = data.message || JSON.stringify(data);
+      toast.success(`Document uploaded successfully: ${message}`);
+      
       // Assuming the backend returns an ID or some identifier
       // that you want to use for navigation. Adjust accordingly.
       if (data && data.documentId) {
