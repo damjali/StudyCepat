@@ -1,65 +1,122 @@
-import { Suspense } from "react"
-import Link from "next/link"
-import { notFound } from "next/navigation"
-import { ArrowLeft, FileText } from "lucide-react"
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import { FlashcardStudy } from "@/components/flashcard-study"
-import { getDocument, getFlashcards } from "@/actions/process-document"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Logo } from "@/components/logo"
 
-interface FlashcardsPageProps {
-  params: {
-    id: string
+// Sample flashcard data
+const flashcards = [
+  {
+    question: "What is the time complexity of Merge Sort?",
+    answer: "Time complexity of Merge Sort is O(n log n).",
+  },
+  {
+    question: "What is the time complexity of Quick Sort in worst case?",
+    answer: "O(n²) in the worst case.",
+  },
+  {
+    question: "What is the time complexity of Binary Search?",
+    answer: "O(log n)",
+  },
+  {
+    question: "What data structure uses LIFO principle?",
+    answer: "Stack",
+  },
+  {
+    question: "What data structure uses FIFO principle?",
+    answer: "Queue",
+  },
+  // Add more flashcards to reach 25 total
+  // ...
+]
+
+export default function FlashcardsPage() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isFlipped, setIsFlipped] = useState(false)
+  const totalFlashcards = flashcards.length
+  const router = useRouter()
+
+  const handleNext = () => {
+    if (currentIndex < totalFlashcards - 1) {
+      setCurrentIndex(currentIndex + 1)
+      setIsFlipped(false)
+    }
   }
-}
 
-export default async function FlashcardsPage({ params }: FlashcardsPageProps) {
-  const document = await getDocument(params.id)
-
-  if (!document) {
-    notFound()
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1)
+      setIsFlipped(false)
+    }
   }
 
-  const flashcards = await getFlashcards(params.id)
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped)
+  }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="mb-6">
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
+    <main className="flex min-h-screen flex-col">
+      <div className="fixed bottom-6 left-6">
+        <Logo />
       </div>
 
-      <div className="flex items-start gap-4 mb-6">
-        <FileText className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">{document.name}</h1>
-          <p className="text-muted-foreground">
-            {flashcards.length} flash cards • Uploaded on {new Date(document.uploadedAt).toLocaleDateString()}
-          </p>
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <h1 className="text-4xl font-bold text-center text-navy-900 mb-10">Your flashcard is ready!</h1>
+
+        <div className="w-full max-w-2xl">
+          <Card className="bg-gray-300 p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+                className="rounded-full bg-white"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+
+              <div
+                className={`flashcard relative w-full h-64 mx-4 cursor-pointer ${isFlipped ? "flipped" : ""}`}
+                onClick={handleFlip}
+              >
+                <div className="flashcard-front bg-white rounded-lg p-6 flex items-center justify-center">
+                  <div className="text-center text-xl">{flashcards[currentIndex].question}</div>
+                </div>
+                <div className="flashcard-back bg-white rounded-lg p-6 flex items-center justify-center">
+                  <div className="text-center text-xl">{flashcards[currentIndex].answer}</div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
+                disabled={currentIndex === totalFlashcards - 1}
+                className="rounded-full bg-white"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+            </div>
+
+            <div className="text-center">
+              {currentIndex + 1}/{totalFlashcards}
+            </div>
+          </Card>
+
+          <div className="mt-8 text-center">
+            <Button
+              onClick={() => router.push("/upload")}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2"
+            >
+              Create new flashcards
+            </Button>
+          </div>
         </div>
       </div>
-
-      <Separator className="my-6" />
-
-      <div className="grid gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Study Flash Cards</CardTitle>
-            <CardDescription>Test your knowledge with active recall</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-              <FlashcardStudy documentId={params.id} initialFlashcards={flashcards} />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </main>
   )
 }

@@ -1,20 +1,31 @@
-import type { Metadata } from 'next'
-import './globals.css'
+"use client";
 
-export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
-}
+"use client";
+
+import type React from "react"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Logo } from "@/components/logo"
+import { usePathname } from 'next/navigation';
+import { metadata } from "./layout.server";
+
+const inter = Inter({ subsets: ["latin"] })
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const pathname = usePathname();
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        {pathname?.startsWith('/flashcards/') ? <Logo /> : null}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
-  )
+  );
 }
