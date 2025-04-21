@@ -38,6 +38,7 @@ async def summarize(request: Request, file: UploadFile = File(None)):
     text = None
     try:
         if file:
+            print(f"Processing file: {file.filename}")
             if file.content_type != 'application/pdf':
                 raise HTTPException(status_code=400, detail="Invalid file type")
 
@@ -50,6 +51,8 @@ async def summarize(request: Request, file: UploadFile = File(None)):
                 except Exception as e:
                     print(f"Error extracting text from page: {e}")
                     continue  # Skip to the next page if there's an error
+            
+            print(f"Extracted {len(text)} characters from PDF")
 
         else:
             body = await request.body()
@@ -58,6 +61,7 @@ async def summarize(request: Request, file: UploadFile = File(None)):
                 article = data.get("article")
                 if article:
                     text = article
+                    print(f"Received article text: {len(text)} characters")
                 else:
                     raise HTTPException(
                         status_code=400, detail="No article or file provided"
@@ -68,12 +72,15 @@ async def summarize(request: Request, file: UploadFile = File(None)):
                 )
 
     except PyPDF2.errors.PdfReadError as e:
+        print(f"PDF read error: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid PDF file: {e}")
     except Exception as e:
+        print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing request: {e}")
 
-    if not text:
-        raise HTTPException(status_code=400, detail="No article or file provided")
+    if not text or len(text.strip()) < 50:  # Ensure we have meaningful text
+        print("Text is too short or empty")
+        raise HTTPException(status_code=400, detail="Text is too short or empty")
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -81,20 +88,43 @@ async def summarize(request: Request, file: UploadFile = File(None)):
 
     gemini_client = GeminiClient(api_key)
     try:
+        print("Generating summary...")
         final_prompt = prompt.format(article=text)
         try:
             summary = gemini_client.generate_content(final_prompt)
+            print(f"Summary generated: {len(summary)} characters")
         except Exception as e:
+            print(f"Error generating summary: {e}")
             raise HTTPException(status_code=500, detail=f"Error generating summary: {e}")
+        
+        print("Generating flashcards...")
         try:
             flashcards = gemini_client.generate_flashcards(summary)
+            num_flashcards = len(flashcards) if isinstance(flashcards, list) else 0
+            print(f"Generated {num_flashcards} flashcards")
+            
+            # Ensure we're returning reasonable number of flashcards
+            if num_flashcards < 3 and len(summary) > 500:
+                print("Too few flashcards, trying again with different prompt...")
+                # Try again with a different approach
+                flashcards = gemini_client.generate_flashcards(
+                    f"Create at least 5 detailed flashcards from this text:\n{summary}"
+                )
+                num_flashcards = len(flashcards) if isinstance(flashcards, list) else 0
+                print(f"Second attempt generated {num_flashcards} flashcards")
+            
+            if not flashcards or num_flashcards == 0:
+                raise HTTPException(status_code=500, detail="Failed to generate flashcards")
+                
         except Exception as e:
+            print(f"Error generating flashcards: {e}")
             raise HTTPException(status_code=500, detail=f"Error generating flashcards: {e}")
+        
         return {"flashcards": flashcards}
     except Exception as e:
-        print(e)
+        print(f"Error in final processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 #to check if the server are able to receive data and return it back
 @app.post("/echo")
 async def echo_data(request: Request):

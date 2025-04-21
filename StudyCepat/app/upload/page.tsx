@@ -54,28 +54,49 @@ export default function UploadPage() {
     setArticle(e.target.value)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     if (!file && !article.trim()) {
-      alert("Please upload a PDF or enter an article to continue")
-      return
+      alert("Please upload a PDF or enter an article to continue");
+      return;
     }
 
-    // Simulate processing
-    setIsProcessing(true)
+    setIsProcessing(true);
+    setProgress(0);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          router.push("/flashcards")
-          return 100
-        }
-        return prev + 10
-      })
-    }, 300)
-  }
+    const formData = new FormData();
+    if (file) {
+      formData.append("file", file);
+    } else {
+      formData.append("article", article);
+    }
+
+    try {
+      const response = await fetch("http://localhost:8000/summarize", {
+        method: "POST",
+        body: file ? formData : JSON.stringify({ article: article }),
+        headers: file ? {} : {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(data);
+      const flashcards = JSON.stringify(data.flashcards);
+      const searchParams = new URLSearchParams({ flashcards: flashcards });
+      router.push(`/flashcards?${searchParams.toString()}`);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to generate flashcards. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">

@@ -26,47 +26,42 @@ export function FileUpload() {
   }
 
   const handleUpload = async () => {
-    if (!file) return
-
+    if (!file) return;
+  
     try {
-      setIsUploading(true)
-
-      const formData = new FormData()
-      formData.append("file", file)
-
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+  
       const response = await fetch("http://127.0.0.1:8000/summarize", {
         method: "POST",
         body: formData,
+        // Don't set Content-Type header when using FormData
       });
-
+  
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Upload failed:", errorData);
-        toast.error(`Upload failed: There was an error uploading your document: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("Upload failed:", response.status, errorText);
+        toast.error(`Upload failed: ${response.status} ${response.statusText}`);
         return;
       }
-
+  
       const data = await response.json();
       console.log("Success:", data);
-      //toast.success("Document uploaded successfully: Your document has been sent for summarization.");
-
-      const message = data.message || JSON.stringify(data);
-      toast.success(`Document uploaded successfully: ${message}`);
       
-      // Assuming the backend returns an ID or some identifier
-      // that you want to use for navigation. Adjust accordingly.
-      if (data && data.documentId) {
-        router.push(`/summary/${data.documentId}`);
+      // Use the flashcards data from the response
+      if (data && data.flashcards) {
+        // Store the flashcards in local storage or state management
+        localStorage.setItem('flashcards', JSON.stringify(data.flashcards));
+        router.push('/flashcards');
       } else {
-        // Optionally handle cases where no ID is returned
-        console.warn("No document ID received from the backend.");
+        toast.error("No flashcards data received");
       }
-
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Upload failed: There was an error uploading your document");
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
   }
 
