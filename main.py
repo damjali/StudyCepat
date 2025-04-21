@@ -37,19 +37,11 @@ def read_root():
 async def summarize(request: Request, file: UploadFile = File(None)):
     text = None
     try:
-        body = await request.body()
         if file:
             if file.content_type != 'application/pdf':
                 raise HTTPException(status_code=400, detail="Invalid file type")
 
-            if not body:
-                raise HTTPException(status_code=400, detail="Empty PDF file")
-
-            pdf_file = PyPDF2.PdfReader(io.BytesIO(body))
             contents = await file.read()
-            if not contents:
-                raise HTTPException(status_code=400, detail="Empty PDF file")
-
             pdf_file = PyPDF2.PdfReader(io.BytesIO(contents))
             text = ""
             for page in pdf_file.pages:
@@ -60,6 +52,7 @@ async def summarize(request: Request, file: UploadFile = File(None)):
                     continue  # Skip to the next page if there's an error
 
         else:
+            body = await request.body()
             try:
                 data = json.loads(body.decode())
                 article = data.get("article")
@@ -89,8 +82,14 @@ async def summarize(request: Request, file: UploadFile = File(None)):
     gemini_client = GeminiClient(api_key)
     try:
         final_prompt = prompt.format(article=text)
-        summary = gemini_client.generate_content(final_prompt)
-        flashcards = gemini_client.generate_flashcards(summary)
+        try:
+            summary = gemini_client.generate_content(final_prompt)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generating summary: {e}")
+        try:
+            flashcards = gemini_client.generate_flashcards(summary)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generating flashcards: {e}")
         return {"flashcards": flashcards}
     except Exception as e:
         print(e)
@@ -101,3 +100,26 @@ async def summarize(request: Request, file: UploadFile = File(None)):
 async def echo_data(request: Request):
     data = await request.json()
     return data
+
+@app.post("/read-pdf")
+async def read_pdf(file: UploadFile = File(...)):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PDF allowed.")
+
+    try:
+        contents = await file.read()
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(contents))
+        text = ""
+
+        for page in pdf_reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted
+
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text found in PDF.")
+        
+        return {"extracted_text": text.strip()}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading PDF: {e}")

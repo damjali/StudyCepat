@@ -14,7 +14,7 @@ class GeminiClient:
 
     def generate_flashcards(self, summary):
         try:
-            prompt = f"Generate flashcards from the following summary:\\n{summary}\\n\\nFor each flashcard, provide the question and answer in the following format:\\nQuestion: question text\\nAnswer: answer text\\nSeparate each flashcard with a double newline."
+            prompt = f"Generate 5 flashcards from the following summary:\\n{summary}\\n\\nEach flashcard should cover a different key aspect of the summary. For each flashcard, provide the question and answer in the following format:\\nQuestion: question text\\nAnswer: answer text\\nSeparate each flashcard with a double newline."
             response = self.model.generate_content(prompt)
             flashcards_text = response.text
             flashcards = []
