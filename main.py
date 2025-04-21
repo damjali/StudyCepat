@@ -46,6 +46,11 @@ async def summarize(request: Request, file: UploadFile = File(None)):
                 raise HTTPException(status_code=400, detail="Empty PDF file")
 
             pdf_file = PyPDF2.PdfReader(io.BytesIO(body))
+            contents = await file.read()
+            if not contents:
+                raise HTTPException(status_code=400, detail="Empty PDF file")
+
+            pdf_file = PyPDF2.PdfReader(io.BytesIO(contents))
             text = ""
             for page in pdf_file.pages:
                 try:
