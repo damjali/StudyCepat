@@ -1,28 +1,32 @@
 import type React from "react"
+import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import Logo from "@/components/logo"
+import BackgroundAnimation from "@/components/cursor-effect"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Note2Card",
-  description: "Turn your notes into flashcards instantly",
-    generator: 'v0.dev'
+  title: "StudyCepat - Turn Notes Into Knowledge",
+  description: "Upload your lecture notes and get simplified flashcards instantly.",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        <BackgroundAnimation />
+        <div className="relative z-10">
+          <header className="container mx-auto px-4 py-8 flex justify-center">
+            <Logo />
+          </header>
+          <main>{children}</main>
+        </div>
       </body>
     </html>
   )

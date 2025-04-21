@@ -1,20 +1,29 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useState, useRef, type ChangeEvent } from "react"
 import { useRouter } from "next/navigation"
-import { X, FileText, Upload } from "lucide-react"
+import { Upload, X, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
+  const [article, setArticle] = useState("")
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0])
+    }
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -29,98 +38,133 @@ export default function UploadPage() {
     e.preventDefault()
     setIsDragging(false)
 
-    const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile && droppedFile.type === "application/pdf") {
-      setFile(droppedFile)
-    }
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0])
     }
   }
 
   const handleRemoveFile = () => {
     setFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
-  const handleGenerateFlashcards = () => {
-    if (!file) return
+  const handleArticleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setArticle(e.target.value)
+  }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!file && !article.trim()) {
+      alert("Please upload a PDF or enter an article to continue")
+      return
+    }
+
+    // Simulate processing
     setIsProcessing(true)
 
-    // Simulate processing with progress updates
-    let currentProgress = 0
     const interval = setInterval(() => {
-      currentProgress += 5
-      setProgress(currentProgress)
-
-      if (currentProgress >= 100) {
-        clearInterval(interval)
-        setTimeout(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval)
           router.push("/flashcards")
-        }, 500)
-      }
-    }, 150)
+          return 100
+        }
+        return prev + 10
+      })
+    }, 300)
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6">
-      <div className="w-full max-w-md mx-auto">
-        <h1 className="text-4xl font-bold text-center text-navy-900 mb-6">Upload Your Note</h1>
+    <div className="max-w-6xl mx-auto">
+      <h1 className="text-4xl md:text-5xl font-bold mb-6 text-[#1e293b]">Upload Your Note.</h1>
+      <p className="text-lg text-gray-600 mb-8 text-center">
+        Choose a file from your device or paste texts of articles to be summarised into flashcards.
+      </p>
 
-        <Card className="bg-white shadow-md">
-          <div
-            className={`relative h-80 border-2 border-dashed rounded-md m-4 flex flex-col items-center justify-center cursor-pointer ${
-              isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300"
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById("file-upload")?.click()}
-          >
-            {file ? (
-              <div className="flex flex-col items-center">
-                <div className="relative">
-                  <FileText className="w-20 h-20 text-gray-700" />
-                  <button
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleRemoveFile()
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+      <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
+        <Card className="card-glass">
+          <CardContent className="p-0">
+            <div
+              className={`upload-dropzone ${isDragging ? "active" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {file ? (
+                <div className="file-preview">
+                  <div className="flex items-center gap-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                        stroke="#1e293b"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span>{file.name}</span>
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveFile()
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-2 text-gray-700">{file.name}</p>
-              </div>
-            ) : (
-              <>
-                <Upload className="w-12 h-12 text-gray-500 mb-2" />
-                <p className="text-gray-500">Upload or drag .pdf notes</p>
-                <input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <Upload className="h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-gray-500">Upload or drag .pdf notes</p>
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
+                </>
+              )}
+            </div>
+          </CardContent>
         </Card>
 
-        <Button
-          className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-6"
-          disabled={!file || isProcessing}
-          onClick={handleGenerateFlashcards}
-        >
-          Generate Flashcards
-        </Button>
+        <Card className="card-glass">
+          <CardContent className="p-0">
+            <Textarea
+              className="min-h-[300px] border-0 rounded-lg resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder="Paste an article..."
+              value={article}
+              onChange={handleArticleChange}
+            />
+          </CardContent>
+        </Card>
 
-        {isProcessing && (
-          <Card className="mt-4 p-4 bg-gray-100">
-            <p className="text-center text-gray-700 mb-2">Processing notes...</p>
+        <div className="md:col-span-2 mt-6">
+          <Button type="submit" className="w-full py-6 text-lg" disabled={isProcessing}>
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+              </>
+            ) : (
+              "Generate Flashcards"
+            )}
+          </Button>
+        </div>
+      </form>
+
+      {isProcessing && (
+        <Alert className="fixed bottom-4 right-4 w-80 bg-white shadow-lg">
+          <AlertDescription className="flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Processing notes...</span>
+              <span className="text-xs text-muted-foreground">{progress}%</span>
+            </div>
             <Progress value={progress} className="h-2" />
-          </Card>
-        )}
-      </div>
-    </main>
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
   )
 }
