@@ -3,3 +3,6 @@ pydantic
 google-generativeai
 python-dotenv
 PyPDF2
+uvicorn
+aiofiles
+python-multipart
